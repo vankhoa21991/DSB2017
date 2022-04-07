@@ -325,7 +325,7 @@ def prepare_luna():
                 name = f[:-4]
                 id = ids[namelist.index(name)]
                 filename = '0'*(3-len(str(id)))+str(id)
-                shutil.move(os.path.join(d,f),os.path.join(luna_data,filename+f[-4:]))
+                shutil.copyfile(os.path.join(d,f),os.path.join(luna_data,filename+f[-4:]))
                 print(os.path.join(luna_data,str(id)+f[-4:]))
 
         files = [f for f in os.listdir(luna_data) if f.endswith('mhd')]
@@ -353,7 +353,7 @@ def prepare_luna():
                 id = ids[namelist.index(name)]
                 filename = '0'*(3-len(str(id)))+str(id)
 
-                shutil.move(os.path.join(luna_segment,f),os.path.join(luna_segment,filename+lastfix))
+                shutil.copyfile(os.path.join(luna_segment,f),os.path.join(luna_segment,filename+lastfix))
                 print(os.path.join(luna_segment,filename+lastfix))
 
 

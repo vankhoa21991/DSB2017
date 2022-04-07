@@ -9,7 +9,7 @@ from utils import *
 import sys
 sys.path.append('../')
 from split_combine import SplitComb
-
+from tqdm import tqdm
 import torch
 from torch.nn import DataParallel
 from torch.backends import cudnn
@@ -37,7 +37,7 @@ parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                     help='momentum')
 parser.add_argument('--weight-decay', '--wd', default=1e-4, type=float,
                     metavar='W', help='weight decay (default: 1e-4)')
-parser.add_argument('--save-freq', default='10', type=int, metavar='S',
+parser.add_argument('--save-freq', default='2', type=int, metavar='S',
                     help='save frequency')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
@@ -96,7 +96,7 @@ def main():
     net = net.cuda()
     loss = loss.cuda()
     cudnn.benchmark = True
-    net = DataParallel(net)
+    # net = DataParallel(net)
     datadir = config_training['preprocess_result_path']
     
     if args.test == 1:
@@ -163,7 +163,7 @@ def main():
         return lr
     
 
-    for epoch in range(start_epoch, args.epochs + 1):
+    for epoch in tqdm(range(start_epoch, args.epochs + 1)):
         train(train_loader, net, loss, epoch, optimizer, get_lr, args.save_freq, save_dir)
         validate(val_loader, net, loss)
 
@@ -176,10 +176,10 @@ def train(data_loader, net, loss, epoch, optimizer, get_lr, save_freq, save_dir)
         param_group['lr'] = lr
 
     metrics = []
-    for i, (data, target, coord) in enumerate(data_loader):
-        data = Variable(data.cuda(async = True))
-        target = Variable(target.cuda(async = True))
-        coord = Variable(coord.cuda(async = True))
+    for i, (data, target, coord) in tqdm(enumerate(data_loader)):
+        data = Variable(data.cuda(non_blocking = True))
+        target = Variable(target.cuda(non_blocking = True))
+        coord = Variable(coord.cuda(non_blocking = True))
 
         output = net(data, coord)
         loss_output = loss(output, target)
@@ -187,11 +187,12 @@ def train(data_loader, net, loss, epoch, optimizer, get_lr, save_freq, save_dir)
         loss_output[0].backward()
         optimizer.step()
 
-        loss_output[0] = loss_output[0].data[0]
-        metrics.append(loss_output)
+        loss_output[0] = loss_output[0].data
+        metrics.append([l.cpu().numpy() for l in loss_output if type(l)==torch.Tensor])
 
-    if epoch % args.save_freq == 0:            
-        state_dict = net.module.state_dict()
+    if epoch % args.save_freq == 0:
+
+        state_dict = net.state_dict()
         for key in state_dict.keys():
             state_dict[key] = state_dict[key].cpu()
             
@@ -205,13 +206,14 @@ def train(data_loader, net, loss, epoch, optimizer, get_lr, save_freq, save_dir)
     end_time = time.time()
 
     metrics = np.asarray(metrics, np.float32)
+    # metrics = metrics.cpu().numpy()
     print('Epoch %03d (lr %.5f)' % (epoch, lr))
-    print('Train:      tpr %3.2f, tnr %3.2f, total pos %d, total neg %d, time %3.2f' % (
-        100.0 * np.sum(metrics[:, 6]) / np.sum(metrics[:, 7]),
-        100.0 * np.sum(metrics[:, 8]) / np.sum(metrics[:, 9]),
-        np.sum(metrics[:, 7]),
-        np.sum(metrics[:, 9]),
-        end_time - start_time))
+    # print('Train:      tpr %3.2f, tnr %3.2f, total pos %d, total neg %d, time %3.2f' % (
+    #     100.0 * np.sum(metrics[:, 6]) / np.sum(metrics[:, 7]),
+    #     100.0 * np.sum(metrics[:, 8]) / np.sum(metrics[:, 9]),
+    #     np.sum(metrics[:, 7]),
+    #     np.sum(metrics[:, 9]),
+    #     end_time - start_time))
     print('loss %2.4f, classify loss %2.4f, regress loss %2.4f, %2.4f, %2.4f, %2.4f' % (
         np.mean(metrics[:, 0]),
         np.mean(metrics[:, 1]),
@@ -219,7 +221,6 @@ def train(data_loader, net, loss, epoch, optimizer, get_lr, save_freq, save_dir)
         np.mean(metrics[:, 3]),
         np.mean(metrics[:, 4]),
         np.mean(metrics[:, 5])))
-    print
 
 def validate(data_loader, net, loss):
     start_time = time.time()
@@ -227,25 +228,26 @@ def validate(data_loader, net, loss):
     net.eval()
 
     metrics = []
-    for i, (data, target, coord) in enumerate(data_loader):
-        data = Variable(data.cuda(async = True), volatile = True)
-        target = Variable(target.cuda(async = True), volatile = True)
-        coord = Variable(coord.cuda(async = True), volatile = True)
+    with torch.no_grad():
+        for i, (data, target, coord) in tqdm(enumerate(data_loader)):
+            data = Variable(data.cuda(non_blocking = True))
+            target = Variable(target.cuda(non_blocking = True))
+            coord = Variable(coord.cuda(non_blocking = True))
 
-        output = net(data, coord)
-        loss_output = loss(output, target, train = False)
+            output = net(data, coord)
+            loss_output = loss(output, target, train = False)
 
-        loss_output[0] = loss_output[0].data[0]
-        metrics.append(loss_output)    
-    end_time = time.time()
+            loss_output[0] = loss_output[0].data
+            metrics.append([l.cpu().numpy() for l in loss_output if type(l)==torch.Tensor])
+        end_time = time.time()
 
     metrics = np.asarray(metrics, np.float32)
-    print('Validation: tpr %3.2f, tnr %3.8f, total pos %d, total neg %d, time %3.2f' % (
-        100.0 * np.sum(metrics[:, 6]) / np.sum(metrics[:, 7]),
-        100.0 * np.sum(metrics[:, 8]) / np.sum(metrics[:, 9]),
-        np.sum(metrics[:, 7]),
-        np.sum(metrics[:, 9]),
-        end_time - start_time))
+    # print('Validation: tpr %3.2f, tnr %3.8f, total pos %d, total neg %d, time %3.2f' % (
+    #     100.0 * np.sum(metrics[:, 6]) / np.sum(metrics[:, 7]),
+    #     100.0 * np.sum(metrics[:, 8]) / np.sum(metrics[:, 9]),
+    #     np.sum(metrics[:, 7]),
+    #     np.sum(metrics[:, 9]),
+    #     end_time - start_time))
     print('loss %2.4f, classify loss %2.4f, regress loss %2.4f, %2.4f, %2.4f, %2.4f' % (
         np.mean(metrics[:, 0]),
         np.mean(metrics[:, 1]),
@@ -253,8 +255,6 @@ def validate(data_loader, net, loss):
         np.mean(metrics[:, 3]),
         np.mean(metrics[:, 4]),
         np.mean(metrics[:, 5])))
-    print
-    print
 
 def test(data_loader, net, get_pbb, save_dir, config):
     start_time = time.time()
@@ -316,14 +316,13 @@ def test(data_loader, net, get_pbb, save_dir, config):
 
 
     print('elapsed time is %3.2f seconds' % (end_time - start_time))
-    print
-    print
+
 
 def singletest(data,net,config,splitfun,combinefun,n_per_run,margin = 64,isfeat=False):
     z, h, w = data.size(2), data.size(3), data.size(4)
     print(data.size())
     data = splitfun(data,config['max_stride'],margin)
-    data = Variable(data.cuda(async = True), volatile = True,requires_grad=False)
+    data = Variable(data.cuda(non_blocking = True), volatile = True,requires_grad=False)
     splitlist = range(0,args.split+1,n_per_run)
     outputlist = []
     featurelist = []

@@ -15,6 +15,8 @@ class SplitComb():
             max_stride = self.max_stride
         if margin == None:
             margin = self.margin
+        margin = int(margin)
+        side_len = int(side_len)
         
         assert(side_len > margin)
         assert(side_len % max_stride == 0)
@@ -70,6 +72,9 @@ class SplitComb():
         assert(margin % stride == 0)
         side_len /= stride
         margin /= stride
+
+        side_len = int(side_len)
+        margin = int(margin)
 
         splits = []
         for i in range(len(output)):

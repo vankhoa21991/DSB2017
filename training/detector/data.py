@@ -29,13 +29,14 @@ class DataBowl3Detector(Dataset):
         if phase!='test':
             idcs = [f for f in idcs if (f not in self.blacklist)]
 
-        self.filenames = [os.path.join(data_dir, '%s_clean.npy' % idx) for idx in idcs]
+        self.filenames = [os.path.join(data_dir, '%s_clean.npy' % idx.decode('UTF-8')) for idx in idcs]
         self.kagglenames = [f for f in self.filenames if len(f.split('/')[-1].split('_')[0])>20]
         self.lunanames = [f for f in self.filenames if len(f.split('/')[-1].split('_')[0])<20]
         
         labels = []
         
         for idx in idcs:
+            idx = idx.decode('UTF-8')
             l = np.load(os.path.join(data_dir, '%s_label.npy' %idx))
             if np.all(l==0):
                 l=np.array([])
@@ -120,7 +121,8 @@ class DataBowl3Detector(Dataset):
 
     def __len__(self):
         if self.phase == 'train':
-            return len(self.bboxes)/(1-self.r_rand)
+            return 10
+            # return int(len(self.bboxes)/(1-self.r_rand))
         elif self.phase =='val':
             return len(self.bboxes)
         else:
@@ -199,16 +201,16 @@ class Crop(object):
                 e = np.min([crop_size[i]/2,              imgs.shape[i+1]/2-bound_size])
                 target = np.array([np.nan,np.nan,np.nan,np.nan])
             if s>e:
-                start.append(np.random.randint(e,s))#!
+                start.append(int(np.random.randint(e,s)))#!
             else:
-                start.append(int(target[i])-crop_size[i]/2+np.random.randint(-bound_size/2,bound_size/2))
+                start.append(int(int(target[i])-crop_size[i]/2+np.random.randint(-bound_size/2,bound_size/2)))
                 
                 
         normstart = np.array(start).astype('float32')/np.array(imgs.shape[1:])-0.5
         normsize = np.array(crop_size).astype('float32')/np.array(imgs.shape[1:])
-        xx,yy,zz = np.meshgrid(np.linspace(normstart[0],normstart[0]+normsize[0],self.crop_size[0]/self.stride),
-                           np.linspace(normstart[1],normstart[1]+normsize[1],self.crop_size[1]/self.stride),
-                           np.linspace(normstart[2],normstart[2]+normsize[2],self.crop_size[2]/self.stride),indexing ='ij')
+        xx,yy,zz = np.meshgrid(np.linspace(normstart[0],normstart[0]+normsize[0],int(self.crop_size[0]/self.stride)),
+                           np.linspace(normstart[1],normstart[1]+normsize[1],int(self.crop_size[1]/self.stride)),
+                           np.linspace(normstart[2],normstart[2]+normsize[2],int(self.crop_size[2]/self.stride)),indexing ='ij')
         coord = np.concatenate([xx[np.newaxis,...], yy[np.newaxis,...],zz[np.newaxis,:]],0).astype('float32')
 
         pad = []
@@ -268,7 +270,7 @@ class LabelMapping(object):
         output_size = []
         for i in range(3):
             assert(input_size[i] % stride == 0)
-            output_size.append(input_size[i] / stride)
+            output_size.append(int(input_size[i] / stride))
         
         label = -1 * np.ones(output_size + [len(anchors), 5], np.float32)
         offset = ((stride.astype('float')) - 1) / 2
