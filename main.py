@@ -63,13 +63,13 @@ if not skip_detect:
 casemodel = import_module(config_submit['classifier_model'].split('.py')[0])
 casenet = casemodel.CaseNet(topk=5)
 config2 = casemodel.config
-checkpoint = torch.load(config_submit['classifier_param'])
+checkpoint = torch.load(config_submit['classifier_param'], encoding='latin1')
 casenet.load_state_dict(checkpoint['state_dict'])
 
 torch.cuda.set_device(0)
 casenet = casenet.cuda()
 cudnn.benchmark = True
-casenet = DataParallel(casenet)
+# casenet = DataParallel(casenet)
 
 filename = config_submit['outputfile']
 

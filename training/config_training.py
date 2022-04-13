@@ -3,7 +3,7 @@ config = {'stage1_data_path':'/home/admvkl@median.cad/datalake/DK-lake/raw/lung/
           'luna_segment':'/home/admvkl@median.cad//datalake/DS-lake/vankhoa/DSB2017/workspace/luna/LUNA16/seg-lungs-LUNA16',
           
           'luna_data':'/data/data/MedDec/DSB2017/workspace/luna/allset',
-          'preprocess_result_path':'/data/data/MedDec/DataBowl3/stage1/preprocess/',
+          'preprocess_result_path':'/home/vankhoa@median.cad/datasets/MedDec/DataBowl3/stage1/preprocess/',
           
           'luna_abbr':'./detector/labels/shorter.csv',
           'luna_label':'./detector/labels/lunaqualified.csv',

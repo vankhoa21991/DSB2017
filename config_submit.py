@@ -1,5 +1,5 @@
-config = {'datapath':'/data/data/MedDec/stage2',
-          'preprocess_result_path':'./prep_result/',
+config = {'datapath':'/home/vankhoa@median.cad/datasets/MedDec/DataBowl3/stage2/',
+          'preprocess_result_path':'prep_result/',
           'outputfile':'prediction.csv',
           
           'detector_model':'net_detector',
@@ -10,4 +10,4 @@ config = {'datapath':'/data/data/MedDec/stage2',
          'n_worker_preprocessing':None,
          'use_exsiting_preprocessing':False,
          'skip_preprocessing':True,
-         'skip_detect':False}
+         'skip_detect':True}
